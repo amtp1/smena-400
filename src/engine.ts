@@ -111,3 +111,39 @@ export function runScore(input: {
 
   return Math.round(clamp(raw));
 }
+
+export const LEVEL_TITLES = [
+  'Стажёр',
+  'Проводник',
+  'Смена',
+  'Старший смены',
+  'Наставник',
+  'Инструктор',
+  'Эксперт маршрута',
+  'Эталон сервиса',
+  'Хранитель протокола',
+  'Мастер 400',
+] as const;
+
+export function levelFromXp(xp: number) {
+  const level = Math.min(LEVEL_TITLES.length, 1 + Math.floor(Math.max(0, xp) / 100));
+  return { level, title: LEVEL_TITLES[level - 1] };
+}
+
+function signed(value: number) {
+  return value > 0 ? `+${value}` : String(value);
+}
+
+export function describeDelta(delta?: MeterDelta) {
+  if (!delta) return 'Без сдвига шкал';
+  const parts: string[] = [];
+  if (delta.loyalty) parts.push(`лояльность ${signed(delta.loyalty)}`);
+  if (delta.safety) parts.push(`безопасность ${signed(delta.safety)}`);
+  if (delta.competencies) {
+    for (const id of COMPETENCY_IDS) {
+      const value = delta.competencies[id];
+      if (value) parts.push(`${COMPETENCY_LABEL[id]} ${signed(value)}`);
+    }
+  }
+  return parts.length ? parts.join(' · ') : 'Без сдвига шкал';
+}

@@ -1,6 +1,7 @@
+import { useMemo } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { loadProfile } from '../storage';
-import { useMemo } from 'react';
+import { Notifications } from './Notifications';
 
 const LINKS = [
   { to: '/', label: 'Рейс' },
@@ -33,7 +34,10 @@ export function Layout() {
             ))}
           </nav>
         )}
-        <div className="top-name">{name || 'Без бейджа'}</div>
+        <div className="top-tools">
+          {!play && <Notifications />}
+          <div className="top-name">{name || 'Без бейджа'}</div>
+        </div>
       </header>
       <Outlet />
     </div>

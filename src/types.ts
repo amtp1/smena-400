@@ -25,6 +25,13 @@ export type Choice = {
   effects?: MeterDelta;
 };
 
+export type HotspotKind = 'passenger' | 'bag';
+
+export type ScenarioHotspot = {
+  kind: HotspotKind;
+  seat?: string;
+};
+
 export type ScenarioNode = {
   id: string;
   kind: 'beat' | 'ending';
@@ -38,6 +45,7 @@ export type ScenarioNode = {
   timeoutNext?: string;
   timeoutEffects?: MeterDelta;
   choices?: Choice[];
+  hotspot?: ScenarioHotspot;
   ending?: {
     grade: EndingGrade;
     title: string;
@@ -85,6 +93,7 @@ export type RunRecord = {
 };
 
 export type LeaderboardRow = {
+  id?: string;
   name: string;
   score: number;
   unit: string;
@@ -98,4 +107,37 @@ export type ProfileData = {
   achievements: string[];
   runs: RunRecord[];
   leaderboard: LeaderboardRow[];
+};
+
+export type PublicProfile = {
+  id: string;
+  displayName: string;
+  brigade: string;
+  depot: string;
+  xp: number;
+  level: number;
+  levelTitle: string;
+  competencies: Record<CompetencyId, number>;
+  achievements: string[];
+  bestScore: number;
+  expiringPoints: number;
+  expiringAt: number | null;
+};
+
+export type AppNotification = {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  createdAt: number;
+  readAt: number | null;
+};
+
+export type AnalyticsReport = {
+  runs: number;
+  avgScore: number;
+  timeoutRate: number;
+  fastRate: number;
+  gaps: { id: CompetencyId; label: string; value: number; hint: string }[];
+  scenarios: { id: string; title: string; attempts: number; excellent: number }[];
 };

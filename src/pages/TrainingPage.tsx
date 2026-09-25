@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom';
+import { ensureProfile } from '../api';
 import { SCENARIOS } from '../data';
 import { useGame } from '../game-context';
+import { loadProfile } from '../storage';
 
 export function TrainingPage() {
   const { startTraining } = useGame();
@@ -22,7 +24,11 @@ export function TrainingPage() {
             <Link
               className="btn gold"
               to="/play"
-              onClick={() => startTraining(scenario.id)}
+              onClick={() => {
+                const profile = loadProfile();
+                if (profile.name) void ensureProfile(profile.name);
+                startTraining(scenario.id);
+              }}
             >
               Запустить
             </Link>

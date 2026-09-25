@@ -4,6 +4,8 @@ dist-ssr
 .git
 .gitignore
 *.md
+!docs/architecture.md
+!docs/user-flow.md
 *.local
 .vscode
 .idea

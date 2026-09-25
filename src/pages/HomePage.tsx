@@ -1,5 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ensureProfile } from '../api';
 import { SCENARIOS, SHIFT_ORDER } from '../data';
 import { useGame } from '../game-context';
 import { loadProfile, setConductorName } from '../storage';
@@ -11,16 +12,18 @@ export function HomePage() {
   const [name, setName] = useState(profile.name);
   const [saved, setSaved] = useState(Boolean(profile.name));
 
-  function onName(event: FormEvent) {
+  async function onName(event: FormEvent) {
     event.preventDefault();
     if (!name.trim()) return;
     setConductorName(name);
+    await ensureProfile(name);
     setSaved(true);
   }
 
-  function goShift() {
+  async function goShift() {
     if (!name.trim()) return;
     setConductorName(name);
+    await ensureProfile(name);
     startShift();
     navigate('/briefing');
   }

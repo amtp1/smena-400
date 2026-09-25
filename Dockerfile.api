@@ -1,0 +1,12 @@
+FROM node:24-alpine
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+COPY server ./server
+COPY src ./src
+COPY docs ./docs
+ENV HOST=0.0.0.0
+ENV PORT=4001
+ENV DATA_DIR=/data
+EXPOSE 4001
+CMD ["npx", "tsx", "server/index.ts"]

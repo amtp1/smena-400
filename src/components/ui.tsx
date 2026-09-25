@@ -46,14 +46,16 @@ export function TimerRing({ remaining, total }: { remaining: number; total: numb
   );
 }
 
-export function TrainMap({ active }: { active: number }) {
+export function TrainMap({ active, target }: { active: number; target?: number | null }) {
   const cars = [0, 1, 2, 3, 4, 5, 6, 7, 8];
   return (
     <div className="train" aria-label="Схема состава">
       {cars.map((car) => (
         <div
           key={car}
-          className={`train-car ${car === 0 ? 'is-loco' : ''} ${car === active ? 'is-on' : ''}`}
+          className={`train-car ${car === 0 ? 'is-loco' : ''} ${car === active ? 'is-on' : ''} ${
+            target && car === target && car !== active ? 'is-target' : ''
+          }`}
           title={car === 0 ? 'Головной' : `Вагон ${car}`}
         >
           {car === 0 ? '▶' : car}

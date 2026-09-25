@@ -1,7 +1,8 @@
 import { COMPETENCY_IDS, emptyCompetencies } from './engine';
-import type { CompetencyId, LeaderboardRow, ProfileData, RunRecord } from './types';
+import type { CompetencyId, LeaderboardRow, ProfileData, PublicProfile, RunRecord } from './types';
 
 const KEY = 'smena400.v1';
+const ID_KEY = 'smena400.conductorId';
 
 const SEED_BOARD: LeaderboardRow[] = [
   { name: 'Е. Волкова', score: 91, unit: 'Бригада 3' },
@@ -49,6 +50,28 @@ export function setConductorName(name: string) {
   const data = loadProfile();
   data.name = name.trim();
   saveProfile(data);
+  return data;
+}
+
+export function conductorId() {
+  return localStorage.getItem(ID_KEY) ?? '';
+}
+
+export function setConductorId(id: string) {
+  localStorage.setItem(ID_KEY, id);
+}
+
+export function mirrorRemote(input: { profile: PublicProfile; run?: RunRecord }) {
+  const data = loadProfile();
+  data.name = input.profile.displayName;
+  data.xp = input.profile.xp;
+  data.competencies = { ...emptyCompetencies(0), ...input.profile.competencies };
+  data.achievements = input.profile.achievements;
+  if (input.run && !data.runs.some((item) => item.id === input.run?.id)) {
+    data.runs = [input.run, ...data.runs].slice(0, 40);
+  }
+  saveProfile(data);
+  setConductorId(input.profile.id);
   return data;
 }
 

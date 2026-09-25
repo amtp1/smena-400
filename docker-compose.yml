@@ -1,6 +1,22 @@
 services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      PORT: 4001
+      DATA_DIR: /data
+    volumes:
+      - smena-data:/data
+    restart: unless-stopped
+
   web:
     build: .
     ports:
       - "4000:80"
+    depends_on:
+      - api
     restart: unless-stopped
+
+volumes:
+  smena-data:

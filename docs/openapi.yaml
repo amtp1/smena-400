@@ -1,0 +1,448 @@
+openapi: 3.0.3
+info:
+  title: Смена 400 API
+  version: 1.0.0
+  description: |
+    API тренажёра проводника ВСМ. Игровой профиль, журнал решений, очки
+    компетенций, оповещения, аналитика и обмен с HR/LMS.
+
+    В демо только синтетические данные. Поля паспорта, СНИЛС, телефона,
+    почты и адреса отклоняются. Внешний идентификатор сотрудника — `SYN-…`.
+    Интеграционные методы требуют заголовок `X-Integration-Key`.
+    В локальном запуске ключ по умолчанию: `demo-vsm-integration`.
+servers:
+  - url: http://localhost:4000
+    description: Веб-приложение (nginx или Vite проксируют /api)
+  - url: http://localhost:4001
+    description: Процесс API напрямую
+tags:
+  - name: meta
+  - name: scenarios
+  - name: profiles
+  - name: runs
+  - name: notifications
+  - name: leaderboard
+  - name: integrations
+paths:
+  /api/health:
+    get:
+      tags: [meta]
+      summary: Проверка живости
+      responses:
+        '200':
+          description: Сервис отвечает
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok: { type: boolean }
+                  service: { type: string }
+  /api/openapi.yaml:
+    get:
+      tags: [meta]
+      summary: Эта спецификация
+      responses:
+        '200':
+          description: OpenAPI
+          content:
+            application/yaml:
+              schema: { type: string }
+  /api/scenarios:
+    get:
+      tags: [scenarios]
+      summary: Каталог сценариев без графа
+      responses:
+        '200':
+          description: Список кейсов
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ScenarioCard' }
+  /api/scenarios/{id}:
+    get:
+      tags: [scenarios]
+      summary: Полный граф сценария
+      parameters:
+        - $ref: '#/components/parameters/ScenarioId'
+      responses:
+        '200':
+          description: Узлы, таймеры, эффекты и финалы
+        '404':
+          $ref: '#/components/responses/Error'
+  /api/profiles:
+    post:
+      tags: [profiles]
+      summary: Создать игровой профиль
+      description: Начисляет 40 стартовых баллов со сроком 3 дня и три оповещения.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileWrite' }
+      responses:
+        '201':
+          description: Профиль
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '422':
+          $ref: '#/components/responses/Error'
+  /api/profiles/{id}:
+    get:
+      tags: [profiles]
+      summary: Профиль, уровень и сгорающие баллы
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        '200':
+          description: Профиль
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '404':
+          $ref: '#/components/responses/Error'
+    patch:
+      tags: [profiles]
+      summary: Обновить позывной и подразделение
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/ConductorHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ProfileWrite' }
+      responses:
+        '200':
+          description: Обновлённый профиль
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Profile' }
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+  /api/profiles/{id}/analytics:
+    get:
+      tags: [profiles]
+      summary: Прогресс и пробелы компетенций
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+      responses:
+        '200':
+          description: Сводка
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Analytics' }
+  /api/profiles/{id}/notifications:
+    get:
+      tags: [notifications]
+      summary: Оповещения профиля
+      parameters:
+        - $ref: '#/components/parameters/ProfileId'
+        - $ref: '#/components/parameters/ConductorHeader'
+      responses:
+        '200':
+          description: Список
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items: { $ref: '#/components/schemas/Notification' }
+  /api/notifications/{id}/read:
+    post:
+      tags: [notifications]
+      summary: Отметить оповещение прочитанным
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: '#/components/parameters/ConductorHeader'
+      responses:
+        '200':
+          description: Оповещение
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Notification' }
+  /api/runs:
+    post:
+      tags: [runs]
+      summary: Сдать журнал решений
+      description: |
+        Сервер заново проигрывает граф и сам считает шкалы, балл, отметки
+        и срок жизни баллов (30 дней). Клиентский балл не принимается.
+      parameters:
+        - $ref: '#/components/parameters/ConductorHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RunSubmit' }
+      responses:
+        '200':
+          description: Канонический итог
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RunResult' }
+        '400':
+          $ref: '#/components/responses/Error'
+  /api/leaderboard:
+    get:
+      tags: [leaderboard]
+      summary: Рейтинг бригады, депо или компании
+      parameters:
+        - name: scope
+          in: query
+          schema:
+            type: string
+            enum: [brigade, depot, company]
+            default: brigade
+        - $ref: '#/components/parameters/ConductorHeader'
+      responses:
+        '200':
+          description: Строки рейтинга
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  scope: { type: string }
+                  label: { type: string }
+                  rows:
+                    type: array
+                    items: { $ref: '#/components/schemas/BoardRow' }
+  /api/integrations/hr/roster:
+    post:
+      tags: [integrations]
+      summary: Принять синтетический состав из HR
+      parameters:
+        - $ref: '#/components/parameters/IntegrationKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [employees]
+              properties:
+                employees:
+                  type: array
+                  maxItems: 100
+                  items: { $ref: '#/components/schemas/HrEmployee' }
+      responses:
+        '200':
+          description: Сколько карточек записано
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  upserted: { type: integer }
+        '401':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /api/integrations/lms/results:
+    get:
+      tags: [integrations]
+      summary: Выгрузка итогов в LMS
+      parameters:
+        - $ref: '#/components/parameters/IntegrationKey'
+        - name: since
+          in: query
+          description: Нижняя граница `finishedAt`, миллисекунды Unix
+          schema: { type: integer, minimum: 0, default: 0 }
+      responses:
+        '200':
+          description: Пакет результатов без журнала реплик
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  exportedAt: { type: integer }
+                  results:
+                    type: array
+                    items: { $ref: '#/components/schemas/LmsResult' }
+components:
+  parameters:
+    ProfileId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    ScenarioId:
+      name: id
+      in: path
+      required: true
+      schema: { type: string }
+    ConductorHeader:
+      name: X-Conductor-Id
+      in: header
+      required: true
+      schema: { type: string, format: uuid }
+    IntegrationKey:
+      name: X-Integration-Key
+      in: header
+      required: true
+      schema: { type: string }
+  responses:
+    Error:
+      description: Ошибка
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error: { type: string }
+  schemas:
+    ScenarioCard:
+      type: object
+      properties:
+        id: { type: string }
+        title: { type: string }
+        subtitle: { type: string }
+        threat: { type: string }
+        durationLabel: { type: string }
+    ProfileWrite:
+      type: object
+      required: [displayName]
+      properties:
+        displayName: { type: string, example: 'К. Лебедев' }
+        brigade: { type: string, example: 'Бригада 7' }
+        depot: { type: string, example: 'Депо Санкт-Петербург' }
+    Profile:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        displayName: { type: string }
+        brigade: { type: string }
+        depot: { type: string }
+        xp: { type: integer }
+        level: { type: integer }
+        levelTitle: { type: string }
+        competencies:
+          type: object
+          additionalProperties: { type: number }
+        achievements:
+          type: array
+          items: { type: string }
+        bestScore: { type: integer }
+        expiringPoints: { type: integer }
+        expiringAt: { type: integer, nullable: true }
+    Notification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, example: scenario }
+        title: { type: string }
+        body: { type: string }
+        createdAt: { type: integer }
+        readAt: { type: integer, nullable: true }
+    RunSubmit:
+      type: object
+      required: [id, mode, queue, history]
+      properties:
+        id: { type: string, example: run-1710000000000 }
+        mode: { type: string, enum: [shift, training] }
+        queue:
+          type: array
+          items: { type: string }
+        history:
+          type: array
+          items:
+            type: object
+            required: [scenarioId, nodeId, choiceId, remainingSec]
+            properties:
+              scenarioId: { type: string }
+              nodeId: { type: string }
+              choiceId: { type: string }
+              remainingSec: { type: number }
+    RunResult:
+      type: object
+      properties:
+        score: { type: integer }
+        unlocked:
+          type: array
+          items: { type: string }
+        profile: { $ref: '#/components/schemas/Profile' }
+        review:
+          type: array
+          items:
+            type: object
+            properties:
+              scenarioTitle: { type: string }
+              nodeTitle: { type: string }
+              choiceText: { type: string }
+              effectText: { type: string }
+              nextTitle: { type: string }
+              timedOut: { type: boolean }
+    BoardRow:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        score: { type: integer }
+        unit: { type: string }
+        me: { type: boolean }
+    Analytics:
+      type: object
+      properties:
+        runs: { type: integer }
+        avgScore: { type: integer }
+        timeoutRate: { type: integer, description: Процент попыток со срывом таймера }
+        fastRate: { type: integer }
+        gaps:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              label: { type: string }
+              value: { type: number }
+              hint: { type: string }
+        scenarios:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string }
+              title: { type: string }
+              attempts: { type: integer }
+              excellent: { type: integer }
+    HrEmployee:
+      type: object
+      required: [externalId, displayName, brigade, depot]
+      properties:
+        externalId: { type: string, example: SYN-2048 }
+        displayName: { type: string, example: 'К. Лебедев' }
+        brigade: { type: string }
+        depot: { type: string }
+    LmsResult:
+      type: object
+      properties:
+        conductorId: { type: string }
+        externalId: { type: string, nullable: true }
+        displayName: { type: string }
+        brigade: { type: string }
+        depot: { type: string }
+        finishedAt: { type: integer }
+        mode: { type: string }
+        score: { type: integer }
+        loyalty: { type: integer }
+        safety: { type: integer }
+        grades:
+          type: array
+          items: { type: string }
+        scenarioIds:
+          type: array
+          items: { type: string }
+        competencies:
+          type: object
+          additionalProperties: { type: number }
